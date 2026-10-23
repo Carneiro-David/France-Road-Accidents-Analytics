@@ -3,10 +3,14 @@ import os
 import dash
 from dash import html, dcc
 import dash_bootstrap_components as dbc
+from config import DATASET_PATH, DASH_PORT, START_YEAR, END_YEAR
 
 base_path = os.path.dirname(__file__)
-df = pd.read_csv(os.path.join(base_path, "data", "dataset_simplify.csv"), dtype=str)
-
+# df = pd.read_csv(os.path.join(base_path, "data", "dataset_simplify.csv"), dtype=str)
+df = pd.read_csv(
+    os.path.join(base_path, "data", "dataset_simplify_v2.csv"),
+    dtype=str
+)
 app = dash.Dash(
     __name__,
     use_pages=True,
@@ -18,7 +22,7 @@ server = app.server
 
 header = dbc.Navbar(
     dbc.Container([
-        html.Div("Accidents de la route en France (2014–2023)", className="navbar-title"),
+        html.Div("Accidents de la route en France (2019–2023)", className="navbar-title"),
         dbc.Nav(
             [
                 dbc.NavItem(

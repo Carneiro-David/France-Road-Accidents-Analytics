@@ -1,22 +1,28 @@
 import dash
 import dash_leaflet as dl
+import requests
+
 from dash import html, dcc, Input, Output
-import sqlite3
-import os
-from back.meteo_analysis import plot_gravite_meteo, plot_nombre_accidents_meteo, plot_nombre_accidents_meteo_sans_normale, plot_catr_atm
-from utils.helpers import accordion_stats
+
+from back.meteo_analysis import (
+    plot_gravite_meteo,
+    plot_nombre_accidents_meteo,
+    plot_nombre_accidents_meteo_sans_normale,
+    plot_catr_atm
+)
+
 from utils.data_loader import get_data
 from front.pages.temporal import get_temporal_content
 from front.pages.autres import get_autres_content
 
-from utils.helpers import accordion_stats
-import pandas as pd
-import requests
-
-df = get_data()
-dash.register_page(__name__, name="Statistiques", path="/statistique")
+dash.register_page(
+    __name__,
+    name="Statistiques",
+    path="/statistique"
+)
 
 API_URL = "http://localhost:5001"
+
 df = get_data()
 
 def get_vehicule_types():
@@ -94,13 +100,20 @@ def update_section(selected_section):
     elif selected_section == "carto":
         # Prépare le dropdown avec les différents types de véhicules
         vehicule_types = sorted(get_vehicule_types())
+
         vehicule_dropdown = html.Div([
-            html.Label("Filtrer par type de véhicule (catv) :"),
+            html.Label("Filtrer par type de véhicule :"),
             dcc.Dropdown(
                 id="vehicule_selector",
-                options=[{"label": v, "value": v} for v in vehicule_types],
-                value="",
-                placeholder="Sélectionner un type de véhicule",
+                options=[
+                    {"label": "Tous les véhicules", "value": "all"},
+                    *[
+                        {"label": v, "value": v}
+                        for v in vehicule_types
+                    ]
+                ],
+                value="all",
+                clearable=False,
                 className="carto_select"
             )
         ])
@@ -112,9 +125,15 @@ def update_section(selected_section):
             html.Label("Filtrer par gravité d'accident (grav) :"),
             dcc.Dropdown(
                 id="grav_selector",
-                options=[{"label": grav, "value": grav} for grav in grav_tri],
-                value="",
-                placeholder="Sélectionner une gravité d'accident",
+                options=[
+                    {"label": "Toutes les gravités", "value": "all"},
+                    *[
+                        {"label": grav, "value": grav}
+                        for grav in grav_tri
+                    ]
+                ],
+                value="all",
+                clearable=False,
                 className="carto_select"
             )
         ])
@@ -122,11 +141,11 @@ def update_section(selected_section):
             html.Label("Période à afficher (années) :"),
             dcc.RangeSlider(
                 id='year_range',
-                min=2014,
+                min=2019,
                 max=2023,
                 step=1,
-                value=[2014, 2023],
-                marks={year: str(year) for year in range(2014, 2024)},
+                value=[2019, 2023],
+                marks={year: str(year) for year in range(2019, 2024)},
                 tooltip={"placement": "bottom", "always_visible": True},
                 allowCross=False
             )
@@ -156,12 +175,12 @@ def update_section(selected_section):
     Input("grav_selector", "value"),
     Input("year_range", "value")
 )
-def update_geojson(selected_type,grav_type, year_range):
-    if not selected_type or not year_range:
+def update_geojson(selected_type, grav_type, year_range):
+    if not year_range:
         return {"type": "FeatureCollection", "features": []}
-    
-    catv = selected_type if selected_type else "all"
-    grav = grav_type if grav_type else "all"
+
+    catv = selected_type or "all"
+    grav = grav_type or "all"
 
     points = get_filtered_points(catv,grav, year_range[0], year_range[1])
 

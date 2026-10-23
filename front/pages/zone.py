@@ -8,7 +8,11 @@ from back.zone_analysis import *
 dash.register_page(__name__, path="/zones")
 
 base_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-df = pd.read_csv(os.path.join(base_path, "data", "dataset_simplify.csv"), dtype=str)
+# df = pd.read_csv(os.path.join(base_path, "data", "dataset_simplify.csv"), dtype=str)
+df = pd.read_csv(
+    os.path.join(base_path, "data", "dataset_simplify_v2.csv"),
+    dtype=str
+)
 df['date'] = pd.to_datetime(df['date'], errors='coerce')
 df['heure'] = df['date'].dt.hour
 

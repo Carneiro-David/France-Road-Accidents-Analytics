@@ -26,7 +26,8 @@ grav_map = {
 
 os.environ["LOKY_MAX_CPU_COUNT"] = "8"
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "bdd.db")
+# DB_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "bdd.db")
+DB_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "bdd_v2.db")
 
 @app.route("/vehicule-types")
 def get_vehicule_types():
