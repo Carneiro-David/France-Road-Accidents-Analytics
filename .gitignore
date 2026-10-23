@@ -1,8 +1,70 @@
-dataset_simplify.csv
-dataset.zip
+
+# ==========================================
+# ENVIRONNEMENTS VIRTUELS
+# ==========================================
+venv/
+.venv/
+env/
+
+# ==========================================
+# PYTHON - CACHE ET FICHIERS TEMPORAIRES
+# ==========================================
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ==========================================
+# FICHIERS DE DONNEES
+# ==========================================
+*.csv
+*.zip
+*.db
+*.sqlite
+*.sqlite3
+
+# Ignorer le dossier data sauf les scripts Python
 /data/*
-!/data/bdd_gen.py
-bdd.db
-__pycache__
-*.ipynb
-/back/models
+!/data/*.py
+
+# ==========================================
+# MODELES MACHINE LEARNING
+# ==========================================
+/back/models/
+*.pkl
+*.joblib
+
+# ==========================================
+# JUPYTER NOTEBOOKS
+# ==========================================
+.ipynb_checkpoints/
+
+# ==========================================
+# VARIABLES D'ENVIRONNEMENT
+# ==========================================
+.env
+.env.*
+!.env.example
+
+# ==========================================
+# FICHIERS IDE ET SYSTEME
+# ==========================================
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# ==========================================
+# LOGS
+# ==========================================
+*.log
+logs/
+
+# ==========================================
+# FICHIERS DE BUILD
+# ==========================================
+build/
+dist/
+*.egg-info/

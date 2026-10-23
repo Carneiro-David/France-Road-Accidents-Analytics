@@ -31,15 +31,15 @@ def plot_gravite_meteo(df):
 
 def plot_nombre_accidents_meteo_sans_normale(df):
     df_unique = df.drop_duplicates("Num_Acc")
-    df_filtered = df_unique[df_unique['atm'] != 'Normale']
-    df_atm = df_filtered['atm'].value_counts().reset_index()
+    # df_filtered = df_unique[df_unique['atm'] != 'Normale']
+    df_atm = df_unique['atm'].value_counts().reset_index()
     df_atm.columns = ['atm', 'nb_accidents']
 
     fig = px.bar(
         df_atm,
         x='atm',
         y='nb_accidents',
-        title="Nombre d'accidents selon les conditions météorologiques (hors 'Normale')",
+        title="Nombre d'accidents selon les conditions météorologiques",
         labels={'atm': 'Conditions météo', 'nb_accidents': 'Nombre d\'accidents'},
         color='nb_accidents'
     )

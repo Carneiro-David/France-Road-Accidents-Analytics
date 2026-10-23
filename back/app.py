@@ -9,12 +9,12 @@ import pandas as pd
 
 app = Flask(__name__)
 
-model_main = joblib.load("back/models/hist.pkl")
-model_rf = joblib.load("back/models/rf.pkl")
-label_encoder = joblib.load("back/models/label_encoder.pkl")
+# model_main = joblib.load("back/models/hist.pkl")
+# model_rf = joblib.load("back/models/rf.pkl")
+# label_encoder = joblib.load("back/models/label_encoder.pkl")
 
-features_path = "back/models/feature_columns.pkl"
-feature_columns = joblib.load(features_path)
+# features_path = "back/models/feature_columns.pkl"
+# feature_columns = joblib.load(features_path)
 
 scaler = StandardScaler()
 grav_map = {
@@ -134,31 +134,31 @@ def predict_accident():
     input_df["catv"] = input_df["catv"].replace(catv_mapping)
 
     input_encoded = pd.get_dummies(input_df.astype(str))
-    input_encoded = input_encoded.reindex(columns=feature_columns, fill_value=0)
+    # input_encoded = input_encoded.reindex(columns=feature_columns, fill_value=0)
  
     if "age" in input_encoded.columns:
         input_encoded[["age"]] = scaler.transform(input_encoded[["age"]])
 
     input_encoded = input_encoded.astype(np.float32)
 
-    y_pred_main = model_main.predict(input_encoded)[0]
-    proba_main = model_main.predict_proba(input_encoded)[0][1]
-    proba_rf = model_rf.predict_proba(input_encoded)[0][1]
+    # y_pred_main = model_main.predict(input_encoded)[0]
+    # proba_main = model_main.predict_proba(input_encoded)[0][1]
+    # proba_rf = model_rf.predict_proba(input_encoded)[0][1]
     seuil = 0.60
 
-    y_pred_final = 3 if (y_pred_main != 3 and proba_rf > seuil) else y_pred_main
+    # y_pred_final = 3 if (y_pred_main != 3 and proba_rf > seuil) else y_pred_main
     
-    print(y_pred_final)
-    print(label_encoder.inverse_transform([y_pred_final])[0])
+    # print(y_pred_final)
+    # print(label_encoder.inverse_transform([y_pred_final])[0])
 
-    prediction = {
-        "prediction": grav_map[y_pred_final],
-        "probabilité": round(float(proba_main), 3),
-        "corrigé": bool(y_pred_main != y_pred_final),
-        "probabilité_risque_grave": round(float(proba_rf), 3)
-    }
+    # prediction = {
+    #     "prediction": grav_map[y_pred_final],
+    #     "probabilité": round(float(proba_main), 3),
+    #     "corrigé": bool(y_pred_main != y_pred_final),
+    #     "probabilité_risque_grave": round(float(proba_rf), 3)
+    # }
 
-    return jsonify(prediction)
+    # return jsonify(prediction)
 
 
 if __name__ == "__main__":
