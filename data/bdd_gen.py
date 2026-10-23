@@ -2,6 +2,8 @@
 import pandas as pd
 import sqlite3
 from pathlib import Path
+from config import DATASET_PATH, DB_PATH
+
 
 # Chemins du projet
 BASE_DIR = Path(__file__).resolve().parent

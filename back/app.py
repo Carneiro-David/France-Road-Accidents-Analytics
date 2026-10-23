@@ -1,166 +1,226 @@
-from flask import Flask, jsonify, request
-from sklearn.preprocessing import StandardScaler
 
-import os
+from flask import Flask, jsonify, request
+from config import BASE_DIR, DB_PATH, FLASK_PORT
+
 import joblib
 import sqlite3
-import numpy as np
 import pandas as pd
 
 app = Flask(__name__)
 
-# model_main = joblib.load("back/models/hist.pkl")
-# model_rf = joblib.load("back/models/rf.pkl")
-# label_encoder = joblib.load("back/models/label_encoder.pkl")
+# ==========================================
+# CONFIGURATION DU MACHINE LEARNING
+# ==========================================
 
-# features_path = "back/models/feature_columns.pkl"
-# feature_columns = joblib.load(features_path)
+MODELS_DIR = BASE_DIR / "models"
 
-scaler = StandardScaler()
-grav_map = {
-    0: "Indemne",
-    1: "Blessé hospitalisé",
-    2: "Blessé léger",
-    3: "Tué"
-}
+model = joblib.load(
+    MODELS_DIR / "lightgbm_gravite.joblib"
+)
 
-os.environ["LOKY_MAX_CPU_COUNT"] = "8"
+label_encoder = joblib.load(
+    MODELS_DIR / "gravite_encoder.joblib"
+)
 
-# DB_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "bdd.db")
-DB_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "bdd_v2.db")
+FEATURES = [
+    "sexe", "catu", "catv", "atm", "lum",
+    "col", "choc", "manv", "plan", "surf",
+    "nbv", "secu1", "infra", "age", "place"
+]
+
+NUMERIC_FEATURES = ["age", "nbv"]
+
+CATEGORICAL_FEATURES = [
+    col for col in FEATURES
+    if col not in NUMERIC_FEATURES
+]
+
+
+# ==========================================
+# API : TYPES DE VÉHICULES
+# ==========================================
 
 @app.route("/vehicule-types")
 def get_vehicule_types():
-    conn = sqlite3.connect(DB_PATH)
-    df = conn.execute("SELECT DISTINCT catv FROM accidents").fetchall()
-    conn.close()
-    return jsonify([r[0] for r in df if r[0]])
+    with sqlite3.connect(DB_PATH) as conn:
+        rows = conn.execute(
+            "SELECT DISTINCT catv FROM accidents"
+        ).fetchall()
 
-@app.route('/grav-types')
+    return jsonify([row[0] for row in rows if row[0]])
+
+
+# ==========================================
+# API : TYPES DE GRAVITÉ
+# ==========================================
+
+@app.route("/grav-types")
 def get_grav_accident_types():
-    conn = sqlite3.connect(DB_PATH)
-    df = conn.execute("SELECT DISTINCT grav FROM accidents").fetchall()
-    conn.close()
-    return jsonify([r[0] for r in df if r[0]])
+    with sqlite3.connect(DB_PATH) as conn:
+        rows = conn.execute(
+            "SELECT DISTINCT grav FROM accidents"
+        ).fetchall()
+
+    return jsonify([row[0] for row in rows if row[0]])
+
+
+# ==========================================
+# API : POINTS POUR LA CARTOGRAPHIE
+# ==========================================
 
 @app.route("/points")
 def get_filtered_points():
     catv = request.args.get("catv")
+    grav = request.args.get("grav")
     start_year = request.args.get("start")
     end_year = request.args.get("end")
-    grav = request.args.get("grav")
 
     if not start_year or not end_year:
         return jsonify([])
 
+    try:
+        start_year = int(start_year)
+        end_year = int(end_year)
+
+        if start_year > end_year:
+            return jsonify({
+                "error": "Période invalide."
+            }), 400
+
+    except ValueError:
+        return jsonify({
+            "error": "Les années doivent être numériques."
+        }), 400
+
     query = """
-    SELECT lat, long, atm, col, surf, manv, grav
-    FROM accidents
-    WHERE strftime('%Y', date) BETWEEN ? AND ?
-    AND lat IS NOT NULL AND long IS NOT NULL
+        SELECT lat, long, atm, col, surf, manv, catv, grav
+        FROM accidents
+        WHERE date >= ?
+          AND date < ?
+          AND lat IS NOT NULL
+          AND long IS NOT NULL
     """
 
-    params = [start_year,end_year]
+    params = [
+        f"{start_year}-01-01",
+        f"{end_year + 1}-01-01"
+    ]
 
     if catv and catv != "all":
-        query += "AND catv = ? "
+        query += " AND catv = ?"
         params.append(catv)
+
     if grav and grav != "all":
-        query += " AND grav = ? "
+        query += " AND grav = ?"
         params.append(grav)
 
-    conn = sqlite3.connect(DB_PATH)
-    rows = conn.execute(query, params).fetchall()
-    conn.close()
+    with sqlite3.connect(DB_PATH) as conn:
+        rows = conn.execute(query, params).fetchall()
 
-    results = []
-    for lat, lon, atm, col, surf, manv, grav in rows:
-        results.append({
+    results = [
+        {
             "lat": lat,
             "lon": lon,
             "atm": atm,
             "col": col,
             "surf": surf,
             "manv": manv,
-            "catv": catv,
-            "grav": grav
-        })
+            "catv": vehicle_type,
+            "grav": gravity
+        }
+        for lat, lon, atm, col, surf, manv, vehicle_type, gravity in rows
+    ]
 
     return jsonify(results)
 
+
+# ==========================================
+# API : PRÉDICTION MACHINE LEARNING
+# ==========================================
+
 @app.route("/prediction", methods=["POST"])
 def predict_accident():
-    data = request.get_json()
 
-    features_wanted = [
-        "sexe", "catu", "catv", "atm", "lum", "col", "choc",
-        "manv", "plan", "surf", "nbv", "secu1", "infra", "place", "age"
+    data = request.get_json(silent=True)
+
+    # Vérifier le format JSON
+    if not isinstance(data, dict):
+        return jsonify({
+            "error": "Le corps de la requête doit être un objet JSON."
+        }), 400
+
+    # Vérifier la présence des champs obligatoires
+    missing_fields = [
+        col for col in FEATURES
+        if col not in data
+        or data[col] is None
+        or data[col] == ""
     ]
 
-    catv_mapping = {
-        'Voiture': 'Voiture',
-        'Véhicule utilitaire': 'Voiture',
-        'Poids lourd > 7.5t': 'Poids lourd',
-        'Poids lourd <= 7.5t': 'Poids lourd',
-        'PL + remorque': 'Poids lourd',
-        'Tracteur + semi-remorque': 'Poids lourd',
-        'Tracteur routier seul': 'Poids lourd',
-        'Quad lourd': 'Deux-roues motorisé',
-        'Quad léger': 'Deux-roues motorisé',
-        'Voiturette': 'Voiture',
-        'Scooter <= 50 cm3': 'Deux-roues motorisé',
-        'Scooter > 50 cm3': 'Deux-roues motorisé',
-        'Scooter > 125 cm3': 'Deux-roues motorisé',
-        'Scooter <= 125 cm3': 'Deux-roues motorisé',
-        'Cyclomoteur <50cm3': 'Deux-roues motorisé',
-        'Moto > 125 cm3': 'Deux-roues motorisé',
-        'Moto <= 125 cm3': 'Deux-roues motorisé',
-        '3RM > 50 cm3': 'Deux-roues motorisé',
-        '3RM <= 50 cm3': 'Deux-roues motorisé',
-        'Bicyclette': 'Deux-roues non motorisé',
-        'EDP motorisé': 'Deux-roues motorisé',
-        'EDP non motorisé': 'Deux-roues non motorisé',
-        'VAE': 'Vélo',
-        'Train': 'Trains',
-        'Tramway': 'Transport collectif',
-        'Autocar': 'Transport collectif',
-        'Autobus': 'Transport collectif',
-        'Engin spécial': 'Autres',
-        'Indéterminable': 'Autres',
-        'Non renseigné': 'Autres',
-        'Autre': 'Autres'
-    }
+    if missing_fields:
+        return jsonify({
+            "error": "Certains champs sont manquants.",
+            "fields": missing_fields
+        }), 400
 
-    input_df = pd.DataFrame([data])[features_wanted]
-    input_df["catv"] = input_df["catv"].replace(catv_mapping)
+    try:
+        # Construire une ligne avec les 15 variables
+        input_df = pd.DataFrame([
+            {col: data[col] for col in FEATURES}
+        ])
 
-    input_encoded = pd.get_dummies(input_df.astype(str))
-    # input_encoded = input_encoded.reindex(columns=feature_columns, fill_value=0)
- 
-    if "age" in input_encoded.columns:
-        input_encoded[["age"]] = scaler.transform(input_encoded[["age"]])
+        # Convertir les variables numériques
+        for col in NUMERIC_FEATURES:
+            input_df[col] = pd.to_numeric(
+                input_df[col],
+                errors="raise"
+            )
 
-    input_encoded = input_encoded.astype(np.float32)
+        # Vérifier les valeurs numériques
+        age = float(input_df["age"].iloc[0])
+        nbv = float(input_df["nbv"].iloc[0])
 
-    # y_pred_main = model_main.predict(input_encoded)[0]
-    # proba_main = model_main.predict_proba(input_encoded)[0][1]
-    # proba_rf = model_rf.predict_proba(input_encoded)[0][1]
-    seuil = 0.60
+        if not (0 <= age <= 110):
+            return jsonify({
+                "error": "L'âge doit être compris entre 0 et 110 ans."
+            }), 400
 
-    # y_pred_final = 3 if (y_pred_main != 3 and proba_rf > seuil) else y_pred_main
-    
-    # print(y_pred_final)
-    # print(label_encoder.inverse_transform([y_pred_final])[0])
+        if not (0 <= nbv <= 12):
+            return jsonify({
+                "error": "Le nombre de voies doit être compris entre 0 et 12."
+            }), 400
 
-    # prediction = {
-    #     "prediction": grav_map[y_pred_final],
-    #     "probabilité": round(float(proba_main), 3),
-    #     "corrigé": bool(y_pred_main != y_pred_final),
-    #     "probabilité_risque_grave": round(float(proba_rf), 3)
-    # }
+        # Nettoyer les catégories
+        for col in CATEGORICAL_FEATURES:
+            input_df[col] = (
+                input_df[col]
+                .astype("string")
+                .str.strip()
+            )
 
-    # return jsonify(prediction)
+        # Prédiction avec le pipeline complet :
+        # imputation + OneHotEncoder + LightGBM
+        prediction_encoded = model.predict(input_df)
 
+        # Convertir la prédiction en gravité lisible
+        prediction = label_encoder.inverse_transform(
+            prediction_encoded.astype(int)
+        )[0]
+
+        return jsonify({
+            "prediction": str(prediction)
+        })
+
+    except (ValueError, TypeError) as error:
+        return jsonify({
+            "error": "Données invalides.",
+            "details": str(error)
+        }), 400
+
+
+# ==========================================
+# DÉMARRAGE FLASK
+# ==========================================
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5001)
+    app.run(debug=True, port=FLASK_PORT)

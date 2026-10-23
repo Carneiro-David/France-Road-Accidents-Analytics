@@ -7,10 +7,7 @@ from config import DATASET_PATH, DASH_PORT, START_YEAR, END_YEAR
 
 base_path = os.path.dirname(__file__)
 # df = pd.read_csv(os.path.join(base_path, "data", "dataset_simplify.csv"), dtype=str)
-df = pd.read_csv(
-    os.path.join(base_path, "data", "dataset_simplify_v2.csv"),
-    dtype=str
-)
+df = pd.read_csv(DATASET_PATH, dtype=str)
 app = dash.Dash(
     __name__,
     use_pages=True,
@@ -22,7 +19,7 @@ server = app.server
 
 header = dbc.Navbar(
     dbc.Container([
-        html.Div("Accidents de la route en France (2019–2023)", className="navbar-title"),
+        html.Div(f"Accidents de la route en France ({START_YEAR}–{END_YEAR})", className="navbar-title"),
         dbc.Nav(
             [
                 dbc.NavItem(
@@ -47,4 +44,4 @@ app.layout = dbc.Container([
 ], fluid=True)
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, port=DASH_PORT)

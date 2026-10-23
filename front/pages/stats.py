@@ -14,6 +14,7 @@ from back.meteo_analysis import (
 from utils.data_loader import get_data
 from front.pages.temporal import get_temporal_content
 from front.pages.autres import get_autres_content
+from config import START_YEAR, END_YEAR
 
 dash.register_page(
     __name__,
@@ -141,11 +142,11 @@ def update_section(selected_section):
             html.Label("Période à afficher (années) :"),
             dcc.RangeSlider(
                 id='year_range',
-                min=2019,
-                max=2023,
+                min=START_YEAR,
+                max=END_YEAR,
                 step=1,
-                value=[2019, 2023],
-                marks={year: str(year) for year in range(2019, 2024)},
+                value=[START_YEAR, END_YEAR],
+                marks={year: str(year) for year in range(START_YEAR, END_YEAR + 1)},
                 tooltip={"placement": "bottom", "always_visible": True},
                 allowCross=False
             )
