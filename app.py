@@ -29,7 +29,10 @@ header = dbc.Navbar(
                         className="navbar-link"
                     )
                 )
-                for page in dash.page_registry.values()
+                for page in sorted(
+                    dash.page_registry.values(),
+                    key=lambda page: page.get("order") if page.get("order") is not None else 999
+                )
             ],
             className="navbar-nav"
         ),

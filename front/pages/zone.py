@@ -6,7 +6,7 @@ import os
 from back.zone_analysis import *
 from config import DATASET_PATH
 
-dash.register_page(__name__, path="/zones")
+dash.register_page(__name__, path="/zones", order=2)
 
 base_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 # df = pd.read_csv(os.path.join(base_path, "data", "dataset_simplify.csv"), dtype=str)

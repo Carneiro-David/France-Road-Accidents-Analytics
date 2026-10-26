@@ -19,7 +19,8 @@ from config import START_YEAR, END_YEAR
 dash.register_page(
     __name__,
     name="Statistiques",
-    path="/statistique"
+    path="/statistique",
+    order=1
 )
 
 API_URL = "http://localhost:5001"

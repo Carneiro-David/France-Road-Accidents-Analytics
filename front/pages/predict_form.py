@@ -3,7 +3,7 @@ import requests
 from dash import dcc, html, Input, Output, State
 import dash_bootstrap_components as dbc
 
-dash.register_page(__name__, path="/formulaire", name="Saisie de données")
+dash.register_page(__name__, path="/formulaire", name="Saisie de données", order=3)
 
 selected_cols = [
     "sexe", "catu", "catv", "atm", "lum", "col", "choc",

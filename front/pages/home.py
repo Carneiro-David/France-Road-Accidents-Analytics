@@ -2,7 +2,7 @@ import dash
 from dash import html
 import dash_bootstrap_components as dbc
 
-dash.register_page(__name__, name="Accueil", path="/")
+dash.register_page(__name__, name="Accueil", path="/", order=0)
 
 layout = dbc.Container([
     html.H2("Bienvenue sur l'observatoire des accidents de la route en France", className="title-main"),
